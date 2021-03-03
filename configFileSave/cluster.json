@@ -1,0 +1,17 @@
+{
+    "__default__" :
+    {
+        "mem" : "4G",
+        "cpu" : 1
+    },
+    "STAR_ALIGN" :
+    {
+        "mem" : "64G",
+        "cpu" : 8
+	},
+	"STAR_INDEX" :
+    {
+        "mem" : "64G",
+        "cpu" : "30"
+	}
+}

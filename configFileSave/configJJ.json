@@ -1,0 +1,18 @@
+{
+	"IS_PAIRED_END": false,
+	"PRELOAD_GENOME":false,
+	"READ_LENGTH" : "",
+	"STAR_GENOME_THREADS": 30,
+	"THREAD_PER_SAMPLE": 5,
+	"FASTA_REFERENCE": "/sandbox/users/dmeistermann/humanPreimp/ReferenceGenomes/Xenla9.2/XENLA_9.2_genome.fa",
+	"GTF_REFERENCE": "/sandbox/users/dmeistermann/humanPreimp/ReferenceGenomes/Xenla9.2/XENLA_9.2_Xenbase.gtf",
+	"FASTQ_PATH": "/sandbox/users/dmeistermann/humanPreimp/JJprojects/alignPoolEmbryos/fastq",
+	"OUTPUT_PATH": "/sandbox/users/dmeistermann/humanPreimp/JJprojects/alignPoolEmbryos",
+	"PAIR_END_FILE_PATTERN":"_",
+	"FORWARD_ADAPTATOR":"",
+	"REVERSE_ADAPTATOR":"",
+	"GENOME_INDEX_RAM":168632718037,
+	"CUTADAPT_MIN_READ_LEN":10,
+	"FEATURE_TYPE":"exon",
+	"FEATURE_ID":"gene_name"
+}

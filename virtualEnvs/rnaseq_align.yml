@@ -1,0 +1,24 @@
+name: rnaseq_align
+channels:
+  - bioconda
+  - conda-forge
+  - ostrokach
+  - defaults
+dependencies:
+  - bcftools=1.9
+  - cutadapt=1.18
+  - fastqc=0.11.8
+  - htseq=0.12.4
+  - multiqc=1.9
+  - numpy=1.14
+  - pandas=0.23.4
+  - prinseq=0.20.4
+  - pysam=0.15
+  - samtools=1.9
+  - snakemake-minimal>=5.2
+  - star=2.7.3a
+  - rseqc
+  - urllib3
+  - gzip
+  - r-base=3.6
+  - r-data.table
