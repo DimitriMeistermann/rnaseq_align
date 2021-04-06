@@ -12,6 +12,7 @@ if not os.path.exists(WORKING_DIR+"/log"):
 #is the workflow running in paired mode ?
 PAIRED_MODE =  config["IS_PAIRED_END"]
 PRELOAD_GENOME = config["PRELOAD_GENOME"]
+DEDUP_UMI = config["DEDUP_UMI"]
 
 ## test of the path provided in the config.json file
 if not os.path.exists( config["FASTQ_PATH"] ):
@@ -219,7 +220,7 @@ else:
 			starIndexDir=STAR_INDEX_DIR,
 			genomeIsLoaded=expand("{file}", file=genomeIsLoadedFile) #optional input
 		output:
-			OUTDIR+"/log/STAR_ALIGN_{sample}.Aligned.sortedByCoord.out.bam"
+			OUTDIR+"/log/STAR_ALIGN_{sample}.Aligned.out.bam"
 		log:
 			out=OUTDIR+"/log/STAR_ALIGN_{sample}.out",
 			err=OUTDIR+"/log/STAR_ALIGN_{sample}.err",
@@ -229,13 +230,13 @@ else:
 		shell: """
 		
 		STAR --runThreadN {params.cpu} --genomeDir {input.starIndexDir} --readFilesCommand zcat --readFilesIn {input.fastq} \\
-		--outFileNamePrefix {OUTDIR}/log/STAR_ALIGN_{wildcards.sample}. --outSAMtype BAM SortedByCoordinate \\
+		--outFileNamePrefix {OUTDIR}/log/STAR_ALIGN_{wildcards.sample}. --outSAMtype BAM Unsorted \\
 		{STAR_LOAD_BEHAVIOR} 1> {log.out} 2> {log.err}
 
 		"""
 	
 	rule MOVE_BAM:
-		input: OUTDIR+"/log/STAR_ALIGN_{sample}.Aligned.sortedByCoord.out.bam"
+		input: OUTDIR+"/log/STAR_ALIGN_{sample}.Aligned.out.bam"
 		output: OUTDIR+"/BAM/{sample}.bam"
 		params: cpu = 1
 		shell: """
@@ -258,20 +259,43 @@ if PRELOAD_GENOME:
 		--outFileNamePrefix {OUTDIR}/log/STAR_UNLOAD_GENOME.  1> {log.out} 2> {log.err}
 		"""
 
-rule MULTIQC:
-	input: 	fastqc=expand(OUTDIR+"/fastQC/{sample}{pair}_fastqc{ext}", sample=SAMPLES,pair=PAIR_SUFFIX,ext=[".zip",".html"]),
-			table = OUTDIR+"/results/rawCountsTable.tsv",
-			stat = OUTDIR+"/results/alignStatTable.tsv",
-	output: OUTDIR+"/results/multiqc_report.html"
-	params:
-		outpath = OUTDIR + "/results",
-		cpu = 1
-	shell: """
-	multiqc -f -e general_stats -e tophat -e bowtie2 {OUTDIR} -o {params.outpath}
-	"""
+
+if DEDUP_UMI:
+	rule INDEX_BAM:
+		input: OUTDIR+"/BAM/{sample}.bam"
+		output: OUTDIR+"/BAM/{sample}.bam.bai"
+		params: cpu = config["THREAD_PER_SAMPLE"]
+		shell: """
+		samtools index -@{params.cpu} {input}
+		"""
+
+	BAM_ALIGN_FOLDER = "DEDUP_BAM"
+	rule DEDUP_UMI:
+		input:
+			bam=OUTDIR+"/BAM/{sample}.bam",
+			bai=OUTDIR+"/BAM/{sample}.bam.bai"
+		output: OUTDIR+"/DEDUP_BAM/{sample}.bam"
+		log:
+			out=OUTDIR+"/log/DEDUP_UMI_{sample}.out",
+			err=OUTDIR+"/log/DEDUP_UMI_{sample}.err"
+		params:
+			paired="--paired" if PAIRED_MODE else ""
+		shell: """
+			umi_tools dedup --no-sort-output --stdin={input.bam} k:{params.paired} --log={log.out} > {output} 2> {log.err}
+		"""
+	
+else: BAM_ALIGN_FOLDER = "BAM"
+	
+#rule SORT_BAM_READ_NAME:
+#	input: OUTDIR+"/"+BAM_ALIGN_FOLDER+"/{sample}.bam"
+#	output:  OUTDIR+"/SORTED_BAM/{sample}.bam"
+#	params: cpu = config["THREAD_PER_SAMPLE"]
+#	shell:"""
+#	samtools sort -@{params.cpu} -n {input} -o {output}
+#	"""
 
 rule HTSEQ_COUNT:
-	input: OUTDIR+"/BAM/{sample}.bam"
+	input: OUTDIR+"/"+BAM_ALIGN_FOLDER+"/{sample}.bam"
 	output: OUTDIR+"/counts/{sample}.counts"
 	params:
 		gtf = config["GTF_REFERENCE"],
@@ -280,7 +304,7 @@ rule HTSEQ_COUNT:
 		cpu = 1
 	log: err=OUTDIR+"/log/HTSEQ_COUNT_{sample}.err"
 	shell: """
-	htseq-count -f bam -r pos -t {params.featureType} -i {params.featureID} -s no {input} {params.gtf} 1> {output} 2> {log.err}
+	htseq-count -f bam -t {params.featureType} -i {params.featureID} -s no {input} {params.gtf} 1> {output} 2> {log.err}
 	"""
 	
 rule COUNTS_TABLE:
@@ -294,3 +318,15 @@ rule COUNTS_TABLE:
 		err=OUTDIR+"/log/COUNTS_TABLE.err"
 	shell: "Rscript {WORKING_DIR}/countsTable.R {OUTDIR}  1> {log.out} 2> {log.err}"
 
+rule MULTIQC:
+	input:
+		fastqc=expand(OUTDIR+"/fastQC/{sample}{pair}_fastqc{ext}", sample=SAMPLES,pair=PAIR_SUFFIX,ext=[".zip",".html"]),
+		table = OUTDIR+"/results/rawCountsTable.tsv",
+		stat = OUTDIR+"/results/alignStatTable.tsv",
+	output: OUTDIR+"/results/multiqc_report.html"
+	params:
+		outpath = OUTDIR + "/results",
+		cpu = 1
+	shell: """
+	multiqc -f -e general_stats -e tophat -e bowtie2 {OUTDIR} -o {params.outpath}
+	"""
