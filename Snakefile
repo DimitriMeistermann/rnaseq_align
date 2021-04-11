@@ -164,7 +164,7 @@ if config["STAR_ALIGN_MULTIPLE_FILE"]:
 				for sample in SAMPLES:
 					base_name = STAR_FASTQ_FOLDER+"/"+sample
 					if PAIRED_MODE:
-						writer.write(base_name+PAIR[0]+".fastq.gz\t"+base_name+PAIR[1]+".fastq.gz\t"+sample+"\n")
+						writer.write(base_name+PAIR_SUFFIX[0]+".fastq.gz\t"+base_name+PAIR_SUFFIX[1]+".fastq.gz\t"+sample+"\n")
 					else:
 						writer.write(base_name+".fastq.gz\t-\t"+sample+"\n")
 
@@ -286,14 +286,6 @@ if DEDUP_UMI:
 	
 else: BAM_ALIGN_FOLDER = "BAM"
 	
-#rule SORT_BAM_READ_NAME:
-#	input: OUTDIR+"/"+BAM_ALIGN_FOLDER+"/{sample}.bam"
-#	output:  OUTDIR+"/SORTED_BAM/{sample}.bam"
-#	params: cpu = config["THREAD_PER_SAMPLE"]
-#	shell:"""
-#	samtools sort -@{params.cpu} -n {input} -o {output}
-#	"""
-
 rule HTSEQ_COUNT:
 	input: OUTDIR+"/"+BAM_ALIGN_FOLDER+"/{sample}.bam"
 	output: OUTDIR+"/counts/{sample}.counts"

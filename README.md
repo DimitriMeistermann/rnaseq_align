@@ -1,5 +1,5 @@
 # Description
-This pipeline aims to provide a simple alignment tool for  RNAseq data (without UMI). The fastq files are aligned on a reference genome with STAR and count with HTSeq-Count. 
+This pipeline aims to provide a simple alignment tool for  RNAseq data (without UMI). The fastq files are aligned on a reference genome with STAR and counted with HTSeq-Count. 
 
 # Prerequisites
 - Git
@@ -34,6 +34,7 @@ conda env create -f virtualEnvs/rnaseq_align.yml
 - **REVERSE_ADAPTATOR**: Reverse sequencing adaptator for cutadapt. This argument is not used for single end data.
 - **GENOME_INDEX_RAM**: RAM allowed to be used by genome indexing.
 - **CUTADAPT_MIN_READ_LEN**: Minimum read length after trimming. If the read is to short it will be removed from the fastq.
+- **DEDUP_UMI**: *true* or *false*, deduplicate reads based on their UMI or note. UMI must be stored in read names. The UMI must be at the end of the read name, separated by an underscore, e.g. `@[readname]_[UMI]`
 - **FEATURE_TYPE**: Feature of the GTF (second column) were aligned reads are counted (example: Exon, Gene,...).
 - **FEATURE_ID**: ID that will be the rows of the count table (gene_name for gene symbols).
 
@@ -47,15 +48,17 @@ snakemake -rp -j 8
 ## With specific config file
 ~~~
 conda activate rnaseq_align
-snakemake -rp -j 8 --configfile configFileSave/configTest.json
+snakemake -rp -j 8 --configfile configFileSave/[yourConfig.json]
 ~~~
 
 ## On SGE grid engine (example: *bird2cluster*). 
-You can find this code in *exeSnakemakeBird.sh*. You can modify the parameter of jobs by editing *sge.sh*.
+You can find this code in *clusterFiles/exeSnakemakeBird.sh*. You can modify the parameter of jobs by editing *jobscriptBird.sh*.
 ~~~
 conda activate rnaseq_align
-snakemake -rp -j 25 --cluster 'qsub'  --jobscript ./sge.sh --latency-wait 10 --max-jobs-per-second 1 --configfile configFileSave/configTest.json
+snakemake -rp -j 20 --cluster 'qsub'  --jobscript clusterFiles/jobscriptBird.sh --latency-wait 10 --max-jobs-per-second 1 --configfile configFileSave/configTest.json
 ~~~
+
+Test files can be found at https://gitlab.univ-nantes.fr/E114424Z/rnaseq_align/-/tree/master/testFolder/fastq
 
 # Output data
 - **log**: log files from executed jobs, in the form of *RULE_NAME[_sampleName].(err|out)*. Additional logs are maybe saved depending the tool that was used.
