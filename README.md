@@ -34,7 +34,7 @@ conda env create -f virtualEnvs/rnaseq_align.yml
 - **REVERSE_ADAPTATOR**: Reverse sequencing adaptator for cutadapt. This argument is not used for single end data.
 - **GENOME_INDEX_RAM**: RAM allowed to be used by genome indexing.
 - **CUTADAPT_MIN_READ_LEN**: Minimum read length after trimming. If the read is to short it will be removed from the fastq.
-- **DEDUP_UMI**: *true* or *false*, deduplicate reads based on their UMI or note. UMI must be stored in read names. The UMI must be at the end of the read name, separated by an underscore, e.g. `@[readname]_[UMI]`
+- **DEDUP_UMI**: *true* or *false*, deduplicate reads based on their UMI. UMI must be stored in read names. The UMI must be at the end of the read name, separated by an underscore, e.g. `@[readname]_[UMI]`. Please see the documentation of *umi_tools extract* to see more details on how to add UMI to read names if the sequencing method uses UMI.
 - **FEATURE_TYPE**: Feature of the GTF (second column) were aligned reads are counted (example: Exon, Gene,...).
 - **FEATURE_ID**: ID that will be the rows of the count table (gene_name for gene symbols).
 
