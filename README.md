@@ -21,7 +21,8 @@ conda env create -f virtualEnvs/rnaseq_align.yml
 
 - **IS_PAIRED_END**: *true* or *false*, is the data in paired end (forward and reverse reads ) ?
 - **PRELOAD_GENOME**: *true* or *false* (experimental). STAR can preload the genome in the RAM, so the next job can use it. Currently it does not work on bird2cluster. 
-- **STAR_ALIGN_MULTIPLE_FILE**: *true* or *false*, align all fastqs in a single STAR job, then resulting BAM is splitted. This is an alternative way to save RAM if PRELOAD_GENOME is not possible
+- **STAR_ALIGN_MULTIPLE_FILE**: *true* or *false*, align fastqs by batches, then resulting BAM is splitted. This is an alternative way to minimize the number of loading of reference genome if PRELOAD_GENOME is not possible.
+- **MAX_SIZE_PER_MULTIPLE_ALIGN**: Size of alignment batches. Example for 50 (means 50 gigabytes): if we have 10 samples of 10GB, the alignment will be performed in two batches, from two different STAR_ALIGN jobs.
 - **READ_LENGTH**: String. Number of nucleotid in each reads, automatically picked if empty string by opening the first read of the first fastq. **Warning:** if cutadapt was already used on fastqs, you have to enter manually the read length before its use.
 - **STAR_GENOME_THREADS**: Number of cores used by genome indexing, preload and align if STAR_ALIGN_MULTIPLE_FILE.
 - **THREAD_PER_SAMPLE**: Number of cores used by most of the workflow jobs.
