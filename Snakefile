@@ -196,7 +196,7 @@ if STAR_ALIGN_MULTIPLE_FILE:
 			starIndexDir=STAR_INDEX_DIR,
 			manifest=OUTPUT_PATH+"/log/star_manifest_{alignBatch}.txt"
 		output:
-			OUTPUT_PATH+"/log/STAR_ALIGN_{alignBatch}.Aligned.out.bam"
+			temp(OUTPUT_PATH+"/log/STAR_ALIGN_{alignBatch}.Aligned.out.bam")
 		log:
 			out=OUTPUT_PATH+"/log/STAR_ALIGN_{alignBatch}.out",
 			err=OUTPUT_PATH+"/log/STAR_ALIGN_{alignBatch}.err",
@@ -226,7 +226,7 @@ if STAR_ALIGN_MULTIPLE_FILE:
 			sample=""
 			for read in reader:
 				rgtag = read.get_tag("RG:Z")
-				if rgtag != sample  :
+				if rgtag != sample:
 					sample = rgtag
 					writer.close()
 					writer = pysam.AlignmentFile(OUTPUT_PATH+"/TMP_BAM/"+sample+".bam", "wb", template=reader)
