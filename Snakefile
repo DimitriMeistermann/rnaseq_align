@@ -77,21 +77,23 @@ if os.path.isfile(OUTPUT_PATH+"/log/genomeIsLoaded"): os.remove(OUTPUT_PATH+"/lo
 #for multiple files, create batch of files
 
 if STAR_ALIGN_MULTIPLE_FILE:
-	
 	batchLim = MAX_SIZE_PER_MULTIPLE_ALIGN * 10**9
 	batchNum=1
 	currentSize=0
+	currentBatch="batch"+str(batchNum)
 
-	ALIGN_BATCHES={"batch"+str(batchNum):[]}
+	ALIGN_BATCHES={currentBatch:[]}
 
 	for sample in SAMPLES:
 		for pair in PAIR_SUFFIX:
 			currentSize+=os.path.getsize(FASTQ_PATH+"/"+sample+pair+".fastq.gz")
-		ALIGN_BATCHES["batch"+str(batchNum)].append(sample)
-		if currentSize > batchLim and sample != SAMPLES[len(SAMPLES)-1]:
+		ALIGN_BATCHES[currentBatch].append(sample)
+		#number of opened file in a process can not exess 1024, samtools split open all possible file in one process
+		if (currentSize > batchLim or len(ALIGN_BATCHES[currentBatch]) > 1000)  and sample != SAMPLES[len(SAMPLES)-1]:
 			batchNum+=1
 			currentSize=0
-			ALIGN_BATCHES["batch"+str(batchNum)]=[]
+			currentBatch="batch"+str(batchNum)
+			ALIGN_BATCHES[currentBatch]=[]
 
 ##############
 rule all: 
@@ -213,28 +215,17 @@ if STAR_ALIGN_MULTIPLE_FILE:
 	rule SPLIT_BAM:
 		input: OUTPUT_PATH+"/log/STAR_ALIGN_{alignBatch}.Aligned.out.bam"
 		output: touch(OUTPUT_PATH+"/log/{alignBatch}_splitIsDone"), 
-		params: cpu = 1
+		params: cpu = THREAD_PER_SAMPLE
 		run:
-			if not os.path.exists(OUTPUT_PATH+"/TMP_BAM"): os.mkdir(OUTPUT_PATH+"/TMP_BAM")
 			reader = pysam.AlignmentFile(str(input), "rb")
 			#Write empty files if a sample have no reads
 			for sample in ALIGN_BATCHES[wildcards.alignBatch]:
-				writer = pysam.AlignmentFile(OUTPUT_PATH+"/TMP_BAM/"+sample+".bam", "wb", template=reader)
+				writer = pysam.AlignmentFile(OUTPUT_PATH+"/log/"+sample+".bam", "wb", template=reader)
 				writer.close()
-			
-			writer = pysam.AlignmentFile("/dev/null", "wb", template=reader)
-			sample=""
-			for read in reader:
-				rgtag = read.get_tag("RG:Z")
-				if rgtag != sample:
-					sample = rgtag
-					writer.close()
-					writer = pysam.AlignmentFile(OUTPUT_PATH+"/TMP_BAM/"+sample+".bam", "wb", template=reader)
-				read.set_tag("RG", None)
-				f=writer.write(read)
-
-			writer.close()
 			reader.close()
+			
+			os.system("samtools split -@{cpu} {inp}".format(inp=str(input),cpu=params.cpu))
+			
 
 	rule FAKE_RULE_MULTIPLE_FILE:
 		input: expand(OUTPUT_PATH+"/log/{alignBatch}_splitIsDone",alignBatch=ALIGN_BATCHES)
@@ -245,7 +236,7 @@ if STAR_ALIGN_MULTIPLE_FILE:
 				missingFileInBAM = False
 
 				for sample in ALIGN_BATCHES[alignBatch]:
-					bamFile = OUTPUT_PATH+"/TMP_BAM/"+sample+".bam"
+					bamFile = OUTPUT_PATH+"/log/"+sample+".bam"
 					if not os.path.exists(bamFile):
 						missingFileInBAM=True
 						missingFile.append(bamFile)
@@ -257,10 +248,7 @@ if STAR_ALIGN_MULTIPLE_FILE:
 			
 			#no error
 			for sample in SAMPLES:
-				os.rename(OUTPUT_PATH+"/TMP_BAM/"+sample+".bam", OUTPUT_PATH+"/BAM/"+sample+".bam")
-			shutil.rmtree(OUTPUT_PATH+"/TMP_BAM")
-
-				
+				os.rename(OUTPUT_PATH+"/log/"+sample+".bam", OUTPUT_PATH+"/BAM/"+sample+".bam")
 
 else:
 	rule STAR_ALIGN:
@@ -308,11 +296,18 @@ if PRELOAD_GENOME:
 		--outFileNamePrefix {OUTPUT_PATH}/log/STAR_UNLOAD_GENOME.  1> {log.out} 2> {log.err}
 		"""
 
-
 if DEDUP_UMI:
-	rule INDEX_BAM:
+	rule SORT_BAM:
 		input: OUTPUT_PATH+"/BAM/{sample}.bam"
-		output: OUTPUT_PATH+"/BAM/{sample}.bam.bai"
+		output: temp(OUTPUT_PATH+"/SORTED_BAM/{sample}.bam")
+		params: cpu = THREAD_PER_SAMPLE
+		shell: """
+		samtools sort -@{params.cpu} -o {output} {input} 
+		"""
+
+	rule INDEX_BAM:
+		input: OUTPUT_PATH+"/SORTED_BAM/{sample}.bam"
+		output: temp(OUTPUT_PATH+"/SORTED_BAM/{sample}.bam.bai")
 		params: cpu = THREAD_PER_SAMPLE
 		shell: """
 		samtools index -@{params.cpu} {input}
@@ -321,16 +316,17 @@ if DEDUP_UMI:
 	BAM_ALIGN_FOLDER = "DEDUP_BAM"
 	rule DEDUP_UMI:
 		input:
-			bam=OUTPUT_PATH+"/BAM/{sample}.bam",
-			bai=OUTPUT_PATH+"/BAM/{sample}.bam.bai"
+			bam=OUTPUT_PATH+"/SORTED_BAM/{sample}.bam",
+			bai=OUTPUT_PATH+"/SORTED_BAM/{sample}.bam.bai"
 		output: OUTPUT_PATH+"/DEDUP_BAM/{sample}.bam"
 		log:
 			out=OUTPUT_PATH+"/log/DEDUP_UMI_{sample}.out",
 			err=OUTPUT_PATH+"/log/DEDUP_UMI_{sample}.err"
 		params:
-			paired="--paired" if IS_PAIRED_END else ""
+			paired="--paired" if IS_PAIRED_END else "",
+			cpu = THREAD_PER_SAMPLE
 		shell: """
-			umi_tools dedup --no-sort-output --stdin={input.bam} k:{params.paired} --log={log.out} > {output} 2> {log.err}
+			umi_tools dedup --no-sort-output --stdin={input.bam} k:{params.paired} --log={log.out} | samtools sort -n -@{params.cpu} -o {output} 2> {log.err}
 		"""
 	
 else: BAM_ALIGN_FOLDER = "BAM"
