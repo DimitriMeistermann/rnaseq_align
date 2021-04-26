@@ -192,7 +192,6 @@ if STAR_ALIGN_MULTIPLE_FILE:
 					else:
 						writer.write(base_name+".fastq.gz\t-\t"+sample+"\n")
 
-	# put temp again
 	rule STAR_ALIGN:
 		input: 
 			starIndexDir=STAR_INDEX_DIR,
@@ -216,16 +215,9 @@ if STAR_ALIGN_MULTIPLE_FILE:
 		input: OUTPUT_PATH+"/log/STAR_ALIGN_{alignBatch}.Aligned.out.bam"
 		output: touch(OUTPUT_PATH+"/log/{alignBatch}_splitIsDone"), 
 		params: cpu = THREAD_PER_SAMPLE
-		run:
-			reader = pysam.AlignmentFile(str(input), "rb")
-			#Write empty files if a sample have no reads
-			for sample in ALIGN_BATCHES[wildcards.alignBatch]:
-				writer = pysam.AlignmentFile(OUTPUT_PATH+"/log/"+sample+".bam", "wb", template=reader)
-				writer.close()
-			reader.close()
-			
-			os.system("samtools split -@{cpu} {inp}".format(inp=str(input),cpu=params.cpu))
-			
+		shell: """			
+		samtools split -f '{OUTPUT_PATH}/log/%!.bam' -@{params.cpu} {input}
+		"""
 
 	rule FAKE_RULE_MULTIPLE_FILE:
 		input: expand(OUTPUT_PATH+"/log/{alignBatch}_splitIsDone",alignBatch=ALIGN_BATCHES)
@@ -326,7 +318,7 @@ if DEDUP_UMI:
 			paired="--paired" if IS_PAIRED_END else "",
 			cpu = THREAD_PER_SAMPLE
 		shell: """
-			umi_tools dedup --no-sort-output --stdin={input.bam} k:{params.paired} --log={log.out} | samtools sort -n -@{params.cpu} -o {output} 2> {log.err}
+			umi_tools dedup --no-sort-output --stdin={input.bam} k:{params.paired} --log={log.out}  --output-stats={OUTPUT_PATH}/log/DEDUP_UMI_{wildcards.sample} | samtools sort -n -@{params.cpu} -o {output} 2> {log.err}
 		"""
 	
 else: BAM_ALIGN_FOLDER = "BAM"
