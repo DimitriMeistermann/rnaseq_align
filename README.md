@@ -12,7 +12,7 @@ The *fastq.gz* files need to be gathered in a directory. The pathway to this dir
 
 # Installation
 ~~~
-git clone https://gitlab.univ-nantes.fr/E114424Z/rnaseq_align.git
+git clone https://github.com/DimitriMeistermann/rnaseq_align.git
 cd rnaseq_align
 conda env create -f virtualEnvs/rnaseq_align.yml
 ~~~
