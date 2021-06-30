@@ -38,8 +38,8 @@ if(OUTPUT_PATH[-1] == "/") : OUTPUT_PATH = OUTPUT_PATH[:-1]
 
 ## suppress the .R1. and .R2. elements for paired-end fastq files for the alignement processus in SAMPLES
 if IS_PAIRED_END:
-	SAMPLES = {itemR2 for itemR2 in SAMPLES if (PAIR_END_FILE_PATTERN+"2") not in itemR2}
-	SAMPLES = {itemR1.replace((PAIR_END_FILE_PATTERN+"1"),'') for itemR1 in SAMPLES}
+	SAMPLES = [itemR2 for itemR2 in SAMPLES if (PAIR_END_FILE_PATTERN+"2") not in itemR2]	
+	SAMPLES = [itemR1.replace((PAIR_END_FILE_PATTERN+"1"),'') for itemR1 in SAMPLES]
 
 #OVERHANG calculation
 if READ_LENGTH<1:
